@@ -1,0 +1,15 @@
+1.) need to update the find element to be more efficient 
+
+2.) Create a standardized test case - use oscillating solid-body rotation.  Particles start start 
+  on a line along y=0, x> 0, move with velocity field of solid body rotation, and oscillate back
+  to the exact starting point.  
+
+3.) need to move to 3D but have option for 2D using vertically-averaged, surface, or bottom fields
+
+4.) need to upgrade the advection to 4 stage RK 
+
+5.) need to add horizontal and vertical random walk
+
+6.) need basic routine to handle trophodynamic modeling
+
+7.) tuning - block size tuning, maintaining local/global vars 

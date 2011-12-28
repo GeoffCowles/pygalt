@@ -1,0 +1,6 @@
+PYGALT - Python GPU Accelerated Lagrangian Tracker
+
+Notes
+At present, particle searches are first done by looking in current element and then neighbor elements.  FVCOM does not store automatically all the neighboring elements surrounding a given element so this must be added to a file (either forcing or separate mesh file) using "add_connectivity".
+
+
