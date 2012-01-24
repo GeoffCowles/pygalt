@@ -12,7 +12,7 @@ dtype_int = numpy.int32
 
 #-----------------------------------------------------
 # set runtime control vars
-outname = "test.nc"    # output file
+outname = "./testing/solidbody/output.nc"    # output file
 gridfile = "./testing/solidbody/solidbody.nc"
 lagfile = "./testing/solidbody/preprocessing/solidbody_test.nc" 
 #forcefile = "semass_4x11_dply3_C_vertavge_only_3daytest.nc" 
@@ -32,7 +32,7 @@ deltat_py = 60.  #time step in seconds
 deltat    = 60.*numpy.ones(1,dtype=numpy.float32) #time step
 deltat_py_days = deltat_py/(3600*24.);
 deltat_days = deltat/(3600*24.);
-freq   = 180          # output frequency in time steps
+freq   = 20          # output frequency in time steps
 #-----------------------------------------------------
 
 # set kernel build options
@@ -195,7 +195,7 @@ xc_buf   = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = xc)
 yc_buf   = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = yc)
 xt_buf   = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = xt)
 yt_buf   = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = yt)
-uf1_buf  = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = uf1)
+uf1_buf  = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = uf1)
 vf1_buf  = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = vf1)
 uf2_buf  = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = uf2)
 vf2_buf  = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = vf2)
@@ -209,7 +209,7 @@ eney_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = eney)
 # setup output file and dump initial positions
 write_output_header(outname,'testing',nlag,nelems)
 icnt = 0
-fout = CDF(outname, NC.WRITE)
+fout = CDF(outname, NC.WRITE|NC.CREATE)
 print "writing initial positions"
 t_var  = fout.var('time')
 x_var  = fout.var('x')
@@ -269,10 +269,10 @@ for its in range(nits):
 	# f1 is behind or in front of f2
 	if(f1 != flast):
 		flast = f1
-		uf1 = fin.var('u')[f1,:]
-		vf1 = fin.var('v')[f1,:]
-		uf2 = fin.var('u')[f2,:]
-		vf2 = fin.var('v')[f2,:]
+		uf1 = fin.var('ua')[f1,:]
+		vf1 = fin.var('va')[f1,:]
+		uf2 = fin.var('ua')[f2,:]
+		vf2 = fin.var('va')[f2,:]
 		cl.enqueue_write_buffer(a_queue, uf1_buf, uf1).wait()
 		cl.enqueue_write_buffer(a_queue, vf1_buf, vf1).wait()
 		cl.enqueue_write_buffer(a_queue, uf2_buf, uf2).wait()
@@ -320,8 +320,8 @@ for its in range(nits):
 	# dump particle positions to file
     #---------------------------------------------------------------------------
 	 
-	#if (its+1)%freq == 0:
-	if (its==nits-1):
+	if (its+1)%freq == 0:
+	#if (its==nits-1):
 		# transfer data back into host
 		cl.enqueue_read_buffer(a_queue, x_buf, x).wait()
 		cl.enqueue_read_buffer(a_queue, y_buf, y).wait()
