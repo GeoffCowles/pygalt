@@ -28,11 +28,11 @@ select_PLATFORM = "Apple"
 #select_GPU = "Cypress"  # GPU to use
 #select_PLATFORM = "ATI"
 
-deltat_py = 20.  #time step in seconds
-deltat    = 20.*numpy.ones(1,dtype=numpy.float32) #time step
+deltat_py = 240.  #time step in seconds
+deltat    = 240.*numpy.ones(1,dtype=numpy.float32) #time step
 deltat_py_days = deltat_py/(3600*24.);
 deltat_days = deltat/(3600*24.);
-freq   = 60          # output frequency in time steps
+freq   = 2          # output frequency in time steps
 #-----------------------------------------------------
 
 # set kernel build options

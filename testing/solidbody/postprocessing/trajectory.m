@@ -32,10 +32,11 @@ yp = nc{'y'}(:,:);
 i = 1; xplot=xp(i,:); yplot=yp(i,:);
 h = plot(xplot,yplot,'k.','EraseMode','none');
 for i=2:numel(time)
-
-    xplot=[xp(i,:);xp(i-1,:)]; yplot=[yp(i,:);yp(i-1,:)];
-    plot(xplot,yplot,'r-')
-    drawnow; pause(delay)
+    drawnow; 
+    xplot=xp(i,:); yplot=yp(i,:);
+    plot([xp(i,:);xp(i-1,:)],[yp(i,:);yp(i-1,:)],'r-')
+    set(h,'xdata',xplot,'ydata',yplot)
+    pause(delay)
 
 end
 plot(xp(end,:),yp(end,:),'b.','EraseMode','none');
