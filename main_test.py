@@ -28,11 +28,11 @@ select_PLATFORM = "Apple"
 #select_GPU = "Cypress"  # GPU to use
 #select_PLATFORM = "ATI"
 
-deltat_py = 60.  #time step in seconds
-deltat    = 60.*numpy.ones(1,dtype=numpy.float32) #time step
+deltat_py = 20.  #time step in seconds
+deltat    = 20.*numpy.ones(1,dtype=numpy.float32) #time step
 deltat_py_days = deltat_py/(3600*24.);
 deltat_days = deltat/(3600*24.);
-freq   = 20          # output frequency in time steps
+freq   = 60          # output frequency in time steps
 #-----------------------------------------------------
 
 # set kernel build options
@@ -67,6 +67,16 @@ yc  = fin.var('yc')[:]
 #ac  = fin.var('active_cells')[:]
 nv  = fin.var('nv')[:,:]; #[3,nelems]
 nv  = nv-1; # shift indices of connectivity to C-style
+nbe = fin.var('nbe')[:,:]; #[3,nelems]
+nbe = numpy.transpose(nbe);
+nbe = nbe -1;
+nbe = nbe.flatten();
+a1u  = fin.var('a1u')[:,:]; #[4,nelems]
+a1u = numpy.transpose(a1u);
+a1u = a1u.flatten();
+a2u  = fin.var('a2u')[:,:]; #[4,nelems]
+a2u = numpy.transpose(a2u);
+a2u = a2u.flatten();
 neney = fin.var('neney')[:];
 eney = fin.var('eney')[:,:];
 eney = numpy.transpose(eney);
@@ -109,8 +119,7 @@ tini = fin.var('tspawn')[:]
 fin.close()
 nlag = len(x) 
 print "# of particles: ",nlag
-u = numpy.zeros(nlag,dtype=dtype_flt)
-v = numpy.zeros(nlag,dtype=dtype_flt)
+
 tlag = numpy.zeros(nlag,dtype=dtype_flt)
 stat = numpy.zeros(nlag,dtype=dtype_int)
 
@@ -132,6 +141,10 @@ vf1  = numpy.zeros(nelems,dtype=dtype_flt)
 uf2  = numpy.zeros(nelems,dtype=dtype_flt)   
 vf2  = numpy.zeros(nelems,dtype=dtype_flt)   
 
+u1 = numpy.zeros(nelems,dtype=dtype_flt)
+v1 = numpy.zeros(nelems,dtype=dtype_flt)
+u2 = numpy.zeros(nelems,dtype=dtype_flt)
+v2 = numpy.zeros(nelems,dtype=dtype_flt)
 
 # create context and command queue 
 a_ctx = cl.Context([device])
@@ -189,8 +202,10 @@ x_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = x)
 y_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = y)
 x2_buf   = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = x2)
 y2_buf   = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = y2)
-u_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = u)
-v_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = v)
+u1_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = u1)
+v1_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = v1)
+u2_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = u2)
+v2_buf    = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = v2)
 xc_buf   = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = xc)
 yc_buf   = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = yc)
 xt_buf   = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = xt)
@@ -200,6 +215,9 @@ vf1_buf  = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = vf1)
 uf2_buf  = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = uf2)
 vf2_buf  = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = vf2)
 cell_buf = cl.Buffer(a_ctx,mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf = cell)
+nbe_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = nbe)
+a1u_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = a1u)
+a2u_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = a2u)
 neney_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = neney)
 eney_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = eney)
 #crap_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = frame_frac)
@@ -209,13 +227,11 @@ eney_buf = cl.Buffer(a_ctx,mf.READ_ONLY  | mf.COPY_HOST_PTR, hostbuf = eney)
 # setup output file and dump initial positions
 write_output_header(outname,'testing',nlag,nelems)
 icnt = 0
-fout = CDF(outname, NC.WRITE|NC.CREATE)
+fout = CDF(outname, NC.WRITE)
 print "writing initial positions"
 t_var  = fout.var('time')
 x_var  = fout.var('x')
 y_var  = fout.var('y')
-u_var  = fout.var('u')
-v_var  = fout.var('v')
 c_var  = fout.var('cell')
 m_var  = fout.var('mark')
 tlag_var = fout.var('tlag')
@@ -223,13 +239,15 @@ tini_var = fout.var('tinit')
 t_var[icnt] = 0.0 
 x_var[icnt] = x
 y_var[icnt] = y
-u_var[icnt] = u
-v_var[icnt] = v
 c_var[icnt] = cell
 m_var[icnt] = mark
 tlag_var[icnt] = tlag
 tini_var[icnt] = tini
 
+u2 = fin.var('ua')[0,:]
+v2 = fin.var('va')[0,:]
+cl.enqueue_write_buffer(a_queue, u2_buf, u2).wait()
+cl.enqueue_write_buffer(a_queue, v2_buf, v2).wait()
 
 #===========================================================================
 # loop over time
@@ -301,9 +319,9 @@ for its in range(nits):
 	#print "tlag",cell[200],mark[cell[200]],tlag[200]
 
     #---------------------------------------------------------------------------
-	# update velocities 
+	# update forcing
     #---------------------------------------------------------------------------
-	event = interp_knl(a_queue,x.shape,None,cell_buf,stat_buf,u_buf,v_buf,uf1_buf,vf1_buf,
+	event = interp_knl(a_queue,u1.shape,None,u1_buf,v1_buf,u2_buf,v2_buf,uf1_buf,vf1_buf,
 		uf2_buf,vf2_buf,frame_frac)
 
 	#cl.enqueue_read_buffer(a_queue, u_buf, u).wait()
@@ -313,7 +331,7 @@ for its in range(nits):
     #---------------------------------------------------------------------------
 	# advect with opencl
     #---------------------------------------------------------------------------
-	event = advect_knl(a_queue,x.shape,None,x_buf,y_buf,u_buf,v_buf,deltat) 
+	event = advect_knl(a_queue,x.shape,None,cell_buf,stat_buf,nbe_buf,a1u_buf,a2u_buf,xc_buf,yc_buf,x_buf,y_buf,u1_buf,v1_buf,u2_buf,v2_buf,deltat) 
 	#event = revadvect_knl(a_queue,x.shape,None,x_buf,y_buf,u_buf,v_buf)
 
     #---------------------------------------------------------------------------
@@ -325,8 +343,6 @@ for its in range(nits):
 		# transfer data back into host
 		cl.enqueue_read_buffer(a_queue, x_buf, x).wait()
 		cl.enqueue_read_buffer(a_queue, y_buf, y).wait()
-		cl.enqueue_read_buffer(a_queue, u_buf, u).wait()
-		cl.enqueue_read_buffer(a_queue, v_buf, v).wait()
 		cl.enqueue_read_buffer(a_queue, cell_buf, cell).wait()
 		cl.enqueue_read_buffer(a_queue, tlag_buf, tlag).wait()
 		cl.enqueue_read_buffer(a_queue, tini_buf, tini).wait()
@@ -336,9 +352,8 @@ for its in range(nits):
 		print "writing iteration: ",icnt
 		t_var[icnt] = mtime_py 
 		x_var[icnt] = x
+		print "x = ",x
 		y_var[icnt] = y
-		u_var[icnt] = u
-		v_var[icnt] = v
 		c_var[icnt] = cell +1
 		tini_var[icnt] = tini  
 		tlag_var[icnt] = tlag
@@ -354,8 +369,9 @@ for its in range(nits):
 	# update timer
 	timer = time()-t1
 	temp  = timer/(its+1)
-	#print 'time per iteration %5.3f: ' %  temp 
+    #print 'time per iteration %5.3f: ' %  temp 
 
+    
 print "simulation finished"
 print "total gpu time: ", timer
 print 

@@ -26,10 +26,6 @@ def write_output_header(fname,casetitle,nlag,nelems):
 	x_var.units = 'm'
 	y_var = f.def_var('y',NC.FLOAT,(time_dim,nlag_dim))
 	y_var.units = 'm'
-	u_var = f.def_var('u',NC.FLOAT,(time_dim,nlag_dim))
-	u_var.units = 'm/s'
-	v_var = f.def_var('v',NC.FLOAT,(time_dim,nlag_dim))
-	v_var.units = 'm/s'
 	c_var = f.def_var('cell',NC.INT,(time_dim,nlag_dim))
 	c_var.units = '-'
 	m_var = f.def_var('mark',NC.INT,(time_dim,nele_dim))

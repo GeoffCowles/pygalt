@@ -1,7 +1,7 @@
 clear all
 close all
 fname = '../output.nc';
-delay = .2;
+delay = .1;
 
 % open the mesh file
 nc = netcdf('../solidbody.nc','nowrite');
@@ -13,6 +13,7 @@ nv = nc{'nv'}(:)';
 fighandle = figure;
 patch('Vertices',[xm,ym],'Faces',nv,...
        'Cdata',hm,'edgecolor','interp','facecolor','interp');
+axis([0 1000 0 1000]);
 hold on
 
 % open the particle data
@@ -37,3 +38,4 @@ for i=2:numel(time)
     drawnow; pause(delay)
 
 end
+plot(xp(end,:),yp(end,:),'b.','EraseMode','none');
