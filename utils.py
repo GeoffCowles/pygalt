@@ -7,8 +7,12 @@ def horzbardash():
 def write_output_header(fname,casetitle,nlag,nelems):
 	from numpy import *
 	from pycdf import *
-	f = CDF(fname, NC.WRITE|NC.CREATE|NC.TRUNC)
-	f.automode()
+	try:
+		f = CDF(fname, NC.WRITE|NC.CREATE|NC.TRUNC)
+		f.automode()
+	except CDFError:
+		f = CDF(fname, NC.WRITE|NC.CREATE|NC.TRUNC)
+		f.automode()
 
 	# global attributes
 	f.title = casetitle
@@ -34,4 +38,6 @@ def write_output_header(fname,casetitle,nlag,nelems):
 	tlag_var.units = 'days'
 	tini_var = f.def_var('tinit',NC.FLOAT,(time_dim,nlag_dim))
 	tini_var.units = 'days'
+	
+	f.close()
 

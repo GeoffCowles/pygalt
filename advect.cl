@@ -28,18 +28,19 @@ __kernel void advect( __global int* incell, __global int* stat, __global int* nb
     {
         if(ns>0)
         {
+			// Particle Position at Stage N 
 			pdx = x[i]  + a_rk[ns]*deltat*chix[ns-1];
 			pdy = y[i]  + a_rk[ns]*deltat*chiy[ns-1];
         }
 		
 		xoc = pdx - xc[icell];
 		yoc = pdy - yc[icell];
-    
+
+	    // interpolate velocity field to particle position    
 		dvdx = a1u[icell*4+0]*u1[icell]+a1u[icell*4+1]*u1[e1]+a1u[icell*4+2]*u1[e2]+a1u[icell*4+3]*u1[e3];
 		dvdy = a2u[icell*4+0]*u1[icell]+a2u[icell*4+1]*u1[e1]+a2u[icell*4+2]*u1[e2]+a2u[icell*4+3]*u1[e3];
 		up1 = u1[icell] + dvdx*xoc +dvdy*yoc;
 
-	
 		dvdx = a1u[icell*4+0]*u2[icell]+a1u[icell*4+1]*u2[e1]+a1u[icell*4+2]*u2[e2]+a1u[icell*4+3]*u2[e3];
 		dvdy = a2u[icell*4+0]*u2[icell]+a2u[icell*4+1]*u2[e1]+a2u[icell*4+2]*u2[e2]+a2u[icell*4+3]*u2[e3];
 		up2 = u2[icell] + dvdx*xoc +dvdy*yoc;
@@ -48,13 +49,13 @@ __kernel void advect( __global int* incell, __global int* stat, __global int* nb
 		dvdy = a2u[icell*4+0]*v1[icell]+a2u[icell*4+1]*v1[e1]+a2u[icell*4+2]*v1[e2]+a2u[icell*4+3]*v1[e3];
 		vp1 = v1[icell] + dvdx*xoc +dvdy*yoc;
 	
-
 		dvdx = a1u[icell*4+0]*v2[icell]+a1u[icell*4+1]*v2[e1]+a1u[icell*4+2]*v2[e2]+a1u[icell*4+3]*v2[e3];
 		dvdy = a2u[icell*4+0]*v2[icell]+a2u[icell*4+1]*v2[e1]+a2u[icell*4+2]*v2[e2]+a2u[icell*4+3]*v2[e3];
 		vp2 = v2[icell] + dvdx*xoc +dvdy*yoc;
 			
-        u  = (1.0-c_rk[ns])*up1 + c_rk[ns]*up2;
-	    v  = (1.0-c_rk[ns])*vp1 + c_rk[ns]*vp2;
+        // Calculate Velocity Field for Stage N Using C_RK Coefficients
+        u  = (1.0-c_rk[ns])*up1 + c_rk[ns]*up2*(float)stat[i];
+	    v  = (1.0-c_rk[ns])*vp1 + c_rk[ns]*vp2*(float)stat[i];
 	    chix[ns]  = u;
 	    chiy[ns]  = v;
 	    	    
@@ -66,8 +67,9 @@ __kernel void advect( __global int* incell, __global int* stat, __global int* nb
 
     for(ns=0; ns<4; ns++)
     {
-    	x[i] = x[i] + deltat*chix[ns]*b_rk[ns];
-    	y[i] = y[i] + deltat*chiy[ns]*b_rk[ns];    	
+//--Update Only Particle Still in Water   
+    	x[i] = x[i] + deltat*chix[ns]*b_rk[ns]*(float)stat[i];
+    	y[i] = y[i] + deltat*chiy[ns]*b_rk[ns]*(float)stat[i];    	
     }
     	
 
