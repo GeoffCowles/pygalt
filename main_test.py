@@ -5,35 +5,15 @@ from pycdf import *
 from numpy import *
 from utils import *
 from time  import time
+from config_file import *
 
 # numpy types 
 dtype_flt = numpy.float32
 dtype_int = numpy.int32
 
-#-----------------------------------------------------
-# set runtime control vars
-outname = "./testing/solidbody/output.nc"    # output file
-gridfile = "./testing/solidbody/solidbody.nc"
-lagfile = "./testing/solidbody/preprocessing/solidbody_test.nc" 
-#forcefile = "semass_4x11_dply3_C_vertavge_only_3daytest.nc" 
-#forcefile = "semass_4x31_dply3_D_vertavge.nc" 
-forcefile = "./testing/solidbody/solidbody.nc"
-
-select_GPU = "ATI Radeon HD 6970M"  # GPU to use
-select_PLATFORM = "Apple"
-
-#select_GPU = "Intel"  # GPU to use
-#select_PLATFORM = "ATI"
-
-#select_GPU = "Cypress"  # GPU to use
-#select_PLATFORM = "ATI"
-
-deltat_py = 240.  #time step in seconds
-deltat    = 240.*numpy.ones(1,dtype=numpy.float32) #time step
+deltat    = deltat_py*numpy.ones(1,dtype=numpy.float32) #time step
 deltat_py_days = deltat_py/(3600*24.);
 deltat_days = deltat/(3600*24.);
-freq   = 2          # output frequency in time steps
-#-----------------------------------------------------
 
 # set kernel build options
 if "NVIDIA" in select_PLATFORM:
@@ -48,15 +28,15 @@ for platform in cl.get_platforms():
 	for devices in platform.get_devices():
 		print platform.name," / ", devices.name
 print ""
-print "======= selected platforms/devices =========="
-for platform in cl.get_platforms():
-	for devices in platform.get_devices():
-#		if select_PLATFORM in platform.name:
-		if select_GPU in devices.name:
-			device = devices
-			print "Using Platform: ",platform.name 
-			print "Using Device: ",devices
-print ""
+# print "======= selected platforms/devices =========="
+# for platform in cl.get_platforms():
+# 	for devices in platform.get_devices():
+# #		if select_PLATFORM in platform.name:
+# 		if select_GPU in devices.name:
+# 			device = devices
+# 			print "Using Platform: ",platform.name 
+# 			print "Using Device: ",devices
+# print ""
 
 # read the mesh, connectivity, and active cell list
 fin = CDF(gridfile)
@@ -147,7 +127,7 @@ u2 = numpy.zeros(nelems,dtype=dtype_flt)
 v2 = numpy.zeros(nelems,dtype=dtype_flt)
 
 # create context and command queue 
-a_ctx = cl.Context([device])
+a_ctx = cl.create_some_context()
 a_queue = cl.CommandQueue(a_ctx,
         properties=cl.command_queue_properties.PROFILING_ENABLE)
 
@@ -352,7 +332,6 @@ for its in range(nits):
 		print "writing iteration: ",icnt
 		t_var[icnt] = mtime_py 
 		x_var[icnt] = x
-		print "x = ",x
 		y_var[icnt] = y
 		c_var[icnt] = cell +1
 		tini_var[icnt] = tini  
