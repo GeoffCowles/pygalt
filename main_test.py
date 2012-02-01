@@ -167,6 +167,7 @@ fstr = "".join(prog.readlines())
 prg = cl.Program(a_ctx,fstr).build(options=buildopts)
 setstate_knl = prg.setstate
 
+
 # create memory buffers
 mf   = cl.mem_flags
 frame_frac = numpy.ones(1,dtype=dtype_flt)
@@ -229,6 +230,11 @@ v2 = fin.var('va')[0,:]
 cl.enqueue_write_buffer(a_queue, u2_buf, u2).wait()
 cl.enqueue_write_buffer(a_queue, v2_buf, v2).wait()
 
+uf1 = fin.var('ua')[0,:]
+vf1 = fin.var('va')[0,:]
+cl.enqueue_write_buffer(a_queue, uf1_buf, uf1).wait()
+cl.enqueue_write_buffer(a_queue, vf1_buf, vf1).wait()
+behind  = numpy.ones(1,dtype=dtype_int)
 #===========================================================================
 # loop over time
 #===========================================================================
@@ -267,14 +273,21 @@ for its in range(nits):
 	# f1 is behind or in front of f2
 	if(f1 != flast):
 		flast = f1
-		uf1 = fin.var('ua')[f1,:]
-		vf1 = fin.var('va')[f1,:]
+		#uf1_buf = uf2_buf
+		#vf1_buf = vf2_buf
+		
 		uf2 = fin.var('ua')[f2,:]
 		vf2 = fin.var('va')[f2,:]
-		cl.enqueue_write_buffer(a_queue, uf1_buf, uf1).wait()
-		cl.enqueue_write_buffer(a_queue, vf1_buf, vf1).wait()
-		cl.enqueue_write_buffer(a_queue, uf2_buf, uf2).wait()
-		cl.enqueue_write_buffer(a_queue, vf2_buf, vf2).wait()
+		
+		if(behind[0] == 1):
+
+			cl.enqueue_write_buffer(a_queue, uf2_buf, uf2).wait()
+			cl.enqueue_write_buffer(a_queue, vf2_buf, vf2).wait()
+			behind  = numpy.zeros(1,dtype=dtype_int)
+		else:
+			cl.enqueue_write_buffer(a_queue, uf1_buf, uf2).wait()
+			cl.enqueue_write_buffer(a_queue, vf1_buf, vf2).wait()
+			behind  = numpy.ones(1,dtype=dtype_int)
 
     #---------------------------------------------------------------------------
 	# find cell containing particle and update state
@@ -302,7 +315,7 @@ for its in range(nits):
 	# update forcing
     #---------------------------------------------------------------------------
 	event = interp_knl(a_queue,u1.shape,None,u1_buf,v1_buf,u2_buf,v2_buf,uf1_buf,vf1_buf,
-		uf2_buf,vf2_buf,frame_frac)
+		uf2_buf,vf2_buf,frame_frac,behind)
 
 	#cl.enqueue_read_buffer(a_queue, u_buf, u).wait()
 	#cl.enqueue_read_buffer(a_queue, v_buf, v).wait()
