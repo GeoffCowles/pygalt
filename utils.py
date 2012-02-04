@@ -36,7 +36,7 @@ def write_output_header(fname,casetitle,nlag,nelems):
 	m_var.units = '-'
 	tlag_var = f.def_var('tlag',NC.FLOAT,(time_dim,nlag_dim))
 	tlag_var.units = 'days'
-	tini_var = f.def_var('tinit',NC.FLOAT,(time_dim,nlag_dim))
+	tini_var = f.def_var('tinit',NC.FLOAT,(nlag_dim))
 	tini_var.units = 'days'
 	
 	f.close()

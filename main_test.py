@@ -116,19 +116,24 @@ print "begin time: ",ftime[0]
 print "end time: ",ftime[-1]
 print "# timesteps: ",nits
 print "# of forcing frames: ",ntimes
-uf1  = numpy.zeros(nelems,dtype=dtype_flt)   
-vf1  = numpy.zeros(nelems,dtype=dtype_flt)   
+uf1 = fin.var('ua')[0,:]
+vf1 = fin.var('va')[0,:] 
 uf2  = numpy.zeros(nelems,dtype=dtype_flt)   
 vf2  = numpy.zeros(nelems,dtype=dtype_flt)   
 
 u1 = numpy.zeros(nelems,dtype=dtype_flt)
 v1 = numpy.zeros(nelems,dtype=dtype_flt)
-u2 = numpy.zeros(nelems,dtype=dtype_flt)
-v2 = numpy.zeros(nelems,dtype=dtype_flt)
+u2 = fin.var('ua')[0,:]
+v2 = fin.var('va')[0,:]
+
 
 # create context and command queue 
 a_ctx = cl.create_some_context()
 a_queue = cl.CommandQueue(a_ctx,
+        properties=cl.command_queue_properties.PROFILING_ENABLE)
+b_queue = cl.CommandQueue(a_ctx,
+        properties=cl.command_queue_properties.PROFILING_ENABLE)
+c_queue = cl.CommandQueue(a_ctx,
         properties=cl.command_queue_properties.PROFILING_ENABLE)
 
 # create kernel for advection
@@ -223,17 +228,9 @@ y_var[icnt] = y
 c_var[icnt] = cell
 m_var[icnt] = mark
 tlag_var[icnt] = tlag
-tini_var[icnt] = tini
+tini_var[0:nlag] = tini
 
-u2 = fin.var('ua')[0,:]
-v2 = fin.var('va')[0,:]
-cl.enqueue_write_buffer(a_queue, u2_buf, u2).wait()
-cl.enqueue_write_buffer(a_queue, v2_buf, v2).wait()
 
-uf1 = fin.var('ua')[0,:]
-vf1 = fin.var('va')[0,:]
-cl.enqueue_write_buffer(a_queue, uf1_buf, uf1).wait()
-cl.enqueue_write_buffer(a_queue, vf1_buf, vf1).wait()
 behind  = numpy.ones(1,dtype=dtype_int)
 #===========================================================================
 # loop over time
@@ -281,12 +278,12 @@ for its in range(nits):
 		
 		if(behind[0] == 1):
 
-			cl.enqueue_write_buffer(a_queue, uf2_buf, uf2).wait()
-			cl.enqueue_write_buffer(a_queue, vf2_buf, vf2).wait()
+			event = cl.enqueue_write_buffer(a_queue, uf2_buf, uf2, is_blocking = False)
+			event = cl.enqueue_write_buffer(b_queue, vf2_buf, vf2, is_blocking = False)
 			behind  = numpy.zeros(1,dtype=dtype_int)
 		else:
-			cl.enqueue_write_buffer(a_queue, uf1_buf, uf2).wait()
-			cl.enqueue_write_buffer(a_queue, vf1_buf, vf2).wait()
+			event = cl.enqueue_write_buffer(a_queue, uf1_buf, uf2, is_blocking = False)
+			event = cl.enqueue_write_buffer(b_queue, vf1_buf, vf2, is_blocking = False)
 			behind  = numpy.ones(1,dtype=dtype_int)
 
     #---------------------------------------------------------------------------
@@ -314,8 +311,8 @@ for its in range(nits):
     #---------------------------------------------------------------------------
 	# update forcing
     #---------------------------------------------------------------------------
-	event = interp_knl(a_queue,u1.shape,None,u1_buf,v1_buf,u2_buf,v2_buf,uf1_buf,vf1_buf,
-		uf2_buf,vf2_buf,frame_frac,behind)
+	event = interp_knl(b_queue,u1.shape,None,u1_buf,v1_buf,u2_buf,v2_buf,uf1_buf,vf1_buf,
+		uf2_buf,vf2_buf,frame_frac,behind).wait()
 
 	#cl.enqueue_read_buffer(a_queue, u_buf, u).wait()
 	#cl.enqueue_read_buffer(a_queue, v_buf, v).wait()
@@ -334,11 +331,11 @@ for its in range(nits):
 	if (its+1)%freq == 0:
 	#if (its==nits-1):
 		# transfer data back into host
-		cl.enqueue_read_buffer(a_queue, x_buf, x).wait()
-		cl.enqueue_read_buffer(a_queue, y_buf, y).wait()
-		cl.enqueue_read_buffer(a_queue, cell_buf, cell).wait()
-		cl.enqueue_read_buffer(a_queue, tlag_buf, tlag).wait()
-		cl.enqueue_read_buffer(a_queue, tini_buf, tini).wait()
+		cl.enqueue_read_buffer(a_queue, x_buf, x, is_blocking = False)
+		cl.enqueue_read_buffer(b_queue, y_buf, y, is_blocking = False)
+		cl.enqueue_read_buffer(a_queue, cell_buf, cell, is_blocking = False)
+		cl.enqueue_read_buffer(b_queue, tlag_buf, tlag, is_blocking = False)
+		cl.enqueue_read_buffer(a_queue, tini_buf, tini, is_blocking = False)
 
     	# write to netcdf file
 		icnt = icnt + 1
@@ -346,8 +343,7 @@ for its in range(nits):
 		t_var[icnt] = mtime_py 
 		x_var[icnt] = x
 		y_var[icnt] = y
-		c_var[icnt] = cell +1
-		tini_var[icnt] = tini  
+		c_var[icnt] = cell +1 
 		tlag_var[icnt] = tlag
 
     #---------------------------------------------------------------------------
@@ -361,7 +357,7 @@ for its in range(nits):
 	# update timer
 	timer = time()-t1
 	temp  = timer/(its+1)
-    #print 'time per iteration %5.3f: ' %  temp 
+	print 'time per iteration %5.3f: ' %  temp 
 
     
 print "simulation finished"
