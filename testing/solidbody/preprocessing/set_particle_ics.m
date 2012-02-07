@@ -12,7 +12,7 @@ y = nc{'y'}(:);
 h = nc{'h'}(:);
 t = nc{'nv'}(:,:)';
 
-[jnk,nelems] = size(t);
+[nelems,jnk] = size(t);
 nverts = numel(x);
 
 % compute xc,yc,hc
@@ -56,10 +56,7 @@ hold on;
 % plot(xc(indomain),yc(indomain),'ro');
 % close(nc);
 
-% dump header
-nc = netcdf(fout,'clobber');
-nc.type = 'PYMALT Initial Particle Position File' ;
-nc.history = 'FILE CREATED using set_particle_ics'; 
+
 
 ntimes = 1; 
 % xinit = zeros(nlag,ntimes);
@@ -78,6 +75,21 @@ xinit = 250.05:100:750.05; nlag = numel(xinit);
 yinit = 500*ones(nlag,1);
 tinit = zeros(nlag,1);
 cinit = zeros(nlag,1);
+
+for i=1:nlag
+    for j=1:nelems
+        if(isintriangle(x(t(j,:)),y(t(j,:)),xinit(i),yinit(i)))
+            cinit(i)=j;
+        end
+    end
+end
+
+
+
+% dump header
+nc = netcdf(fout,'clobber');
+nc.type = 'PYMALT Initial Particle Position File' ;
+nc.history = 'FILE CREATED using set_particle_ics'; 
 
 % dimensions
 nc('nlag') = nlag;
