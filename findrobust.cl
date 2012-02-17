@@ -1,5 +1,5 @@
 // find cell containing particle
-__kernel void findrobust( __global int* incell, __global float* x, __global float* y,  __global float* xt, __global float* yt, int nelem)
+__kernel void findrobust( __global int* incell, __global int* stat, __global float* x, __global float* y,  __global float* xt, __global float* yt, int nelem)
 {
     unsigned int i = get_global_id(0);
     float xtri[3];
@@ -7,6 +7,8 @@ __kernel void findrobust( __global int* incell, __global float* x, __global floa
     float xp = x[i];
     float yp = y[i];
     int cell;
+    
+    if(stat[i]==0){return;}
 
 
     if(incell[i]==-1){

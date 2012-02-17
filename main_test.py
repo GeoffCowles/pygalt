@@ -97,6 +97,7 @@ cell = fin.var('cell')[:]
 cell = cell -1 # convert to C-style counting
 cell2 = cell
 tini = fin.var('tspawn')[:]
+t1st = min(tini);
 fin.close()
 nlag = len(x) 
 print "# of particles: ",nlag
@@ -244,136 +245,139 @@ t1 = time() # initialize timer
 flast = -1
 print x
 for its in range(nits):
+	#for profiling:
+	#elap_wf2 = 0
+	#elap_find = 0
+	#elap_set = 0
+	#elap_uf = 0
+	#elap_adv = 0
+	if(mtime[0]>t1st):
 	
-	elap_wf2 = 0
-	elap_find = 0
-	elap_set = 0
-	elap_uf = 0
-	elap_adv = 0
-
-	print "iteration ",its+1," of ",nits
-#for its in range(1,4):
-    #---------------------------------------------------------------------------
-	# update forcing 
-    # ua is size [ntimes,nelems]
-    #---------------------------------------------------------------------------
-	close = int(abs(ftime-mtime).argmin())
-	if ftime[close] < mtime:
-		f1 = close
-		f2 = min(ntimes-1,f1+1)
-	else:
-		f1 = max(close-1,0)
-		f2 = f1 + 1 
-	#print close
-	#print (mtime-ftime[f1])/(ftime[f2]-ftime[f1]), (ftime[f2]-mtime)/(ftime[f2]-ftime[f1])
-	frame_frac[0] =  (ftime[f2]-mtime)/(ftime[f2]-ftime[f1]) #*numpy.ones(1,dtype=numpy.float32)
-	#print f1
-	#print f2
-	#print ftime[f1]
-	#print ftime[f2]
-
-	# read new frames and push to kernel
- 	# note since the data in f2 becomes f1 we do not need to push two frames 
- 	# every time we go to a new interval.  By using an additional flag we can 
-	# set the linear interpolation in the kernel to be correct whether or not 
-	# f1 is behind or in front of f2
-	if(f1 != flast):
-		flast = f1
-		#uf1_buf = uf2_buf
-		#vf1_buf = vf2_buf
-		
-		uf2 = fin.var('ua')[f2,:]
-		vf2 = fin.var('va')[f2,:]
-		
-		if(behind[0] == 1):
-
-			event = cl.enqueue_write_buffer(a_queue, uf2_buf, uf2, is_blocking = False)
-			#event.wait()
-			#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
-
-			event = cl.enqueue_write_buffer(b_queue, vf2_buf, vf2, is_blocking = False)
-			#event.wait()
-			#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
-
-			behind  = numpy.zeros(1,dtype=dtype_int)
+		print "iteration ",its+1," of ",nits
+	#for its in range(1,4):
+	    #---------------------------------------------------------------------------
+		# update forcing 
+	    # ua is size [ntimes,nelems]
+	    #---------------------------------------------------------------------------
+		close = int(abs(ftime-mtime).argmin())
+		if ftime[close] < mtime:
+			f1 = close
+			f2 = min(ntimes-1,f1+1)
 		else:
-			event = cl.enqueue_write_buffer(a_queue, uf1_buf, uf2, is_blocking = False)
-			#event.wait()
-			#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
-
-			event = cl.enqueue_write_buffer(b_queue, vf1_buf, vf2, is_blocking = False)
-			#event.wait()
-			#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
-
-			behind  = numpy.ones(1,dtype=dtype_int)
-
-    #---------------------------------------------------------------------------
-	# find cell containing particle and update state
-    #---------------------------------------------------------------------------
-	event = findcell_knl(a_queue,x.shape,None,cell_buf,neney_buf,eney_buf,x_buf,
-		y_buf,xt_buf,yt_buf, maxney, num_elems)
-	#event.wait()
-	#elap_find = elap_find + 1e-9*(event.profile.end - event.profile.start)
-	#cl.enqueue_read_buffer(a_queue, cell_buf, cell).wait()
-
-	#event = findrobust_knl(a_queue,x.shape,None,cell_buf,x_buf,
-	#	y_buf,xt_buf,yt_buf,num_elems)
-	#event.wait()
-	#elap_set = elap_set + 1e-9*(event.profile.end - event.profile.start)
-	#print("Execution time of findrobust_knl: %g s" % 1e-9*(event.profile.end - event.profile.start))
-	#cl.enqueue_read_buffer(a_queue, cell_buf, cell).wait()
-	#print "cells",cell,f1,f2
-
-    #---------------------------------------------------------------------------
-	# update particle state and reset particles on land 
-    #---------------------------------------------------------------------------
-	event = setstate_knl(a_queue,x.shape,None,cell_buf,cell2_buf,x_buf,x2_buf,
-		y_buf,y2_buf,tini_buf,tlag_buf,stat_buf,mark_buf,mtime)
-	#cl.enqueue_read_buffer(a_queue, tlag_buf, tlag).wait()
-	#print "tlag",cell[200],mark[cell[200]],tlag[200]
-	#event.wait()
+			f1 = max(close-1,0)
+			f2 = f1 + 1 
+		#print close
+		#print (mtime-ftime[f1])/(ftime[f2]-ftime[f1]), (ftime[f2]-mtime)/(ftime[f2]-ftime[f1])
+		frame_frac[0] =  (ftime[f2]-mtime)/(ftime[f2]-ftime[f1]) #*numpy.ones(1,dtype=numpy.float32)
+		#print f1
+		#print f2
+		#print ftime[f1]
+		#print ftime[f2]
 	
-    #---------------------------------------------------------------------------
-	# update forcing
-    #---------------------------------------------------------------------------
-	event = interp_knl(a_queue,u1.shape,None,u1_buf,v1_buf,u2_buf,v2_buf,uf1_buf,vf1_buf,
-		uf2_buf,vf2_buf,frame_frac,behind)
-	#event.wait()
-	#elap_uf = elap_uf + 1e-9*(event.profile.end - event.profile.start)
-
-	#cl.enqueue_read_buffer(a_queue, u_buf, u).wait()
-	#cl.enqueue_read_buffer(a_queue, v_buf, v).wait()
-	#print "uval",u
-
-    #---------------------------------------------------------------------------
-	# advect with opencl
-    #---------------------------------------------------------------------------
-	event = advect_knl(a_queue,x.shape,None,cell_buf,stat_buf,nbe_buf,a1u_buf,a2u_buf,xc_buf,yc_buf,x_buf,y_buf,u1_buf,v1_buf,u2_buf,v2_buf,deltat) 
-	#event = revadvect_knl(a_queue,x.shape,None,x_buf,y_buf,u_buf,v_buf)
-	#event.wait()
-	#elap_adv = elap_adv + 1e-9*(event.profile.end - event.profile.start)
-
-    #---------------------------------------------------------------------------
-	# dump particle positions to file
-    #---------------------------------------------------------------------------
-	 
-	if (its+1)%freq == 0:
-	#if (its==nits-1):
-		# transfer data back into host
-		cl.enqueue_read_buffer(a_queue, x_buf, x, is_blocking = False)
-		cl.enqueue_read_buffer(b_queue, y_buf, y, is_blocking = False)
-		cl.enqueue_read_buffer(a_queue, cell_buf, cell, is_blocking = False)
-		cl.enqueue_read_buffer(b_queue, tlag_buf, tlag, is_blocking = False)
-		cl.enqueue_read_buffer(a_queue, tini_buf, tini, is_blocking = False)
-
-    	# write to netcdf file
-		icnt = icnt + 1
-		print "writing iteration: ",icnt
-		t_var[icnt] = mtime_py 
-		x_var[icnt] = x
-		y_var[icnt] = y
-		c_var[icnt] = cell +1 
-		tlag_var[icnt] = tlag
+		# read new frames and push to kernel
+		# note since the data in f2 becomes f1 we do not need to push two frames 
+		# every time we go to a new interval.  By using an additional flag we can 
+		# set the linear interpolation in the kernel to be correct whether or not 
+		# f1 is behind or in front of f2
+		if(f1 != flast):
+			flast = f1
+			#uf1_buf = uf2_buf
+			#vf1_buf = vf2_buf
+			
+			uf2 = fin.var('ua')[f2,:]
+			vf2 = fin.var('va')[f2,:]
+			
+			if(behind[0] == 1):
+	
+				event = cl.enqueue_write_buffer(a_queue, uf2_buf, uf2, is_blocking = False)
+				#event.wait()
+				#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
+	
+				event = cl.enqueue_write_buffer(b_queue, vf2_buf, vf2, is_blocking = False)
+				#event.wait()
+				#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
+	
+				behind  = numpy.zeros(1,dtype=dtype_int)
+			else:
+				event = cl.enqueue_write_buffer(a_queue, uf1_buf, uf2, is_blocking = False)
+				#event.wait()
+				#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
+	
+				event = cl.enqueue_write_buffer(b_queue, vf1_buf, vf2, is_blocking = False)
+				#event.wait()
+				#elap_wf2 = elap_wf2 + 1e-9*(event.profile.end - event.profile.start)
+	
+				behind  = numpy.ones(1,dtype=dtype_int)
+	
+	    #---------------------------------------------------------------------------
+		# find cell containing particle and update state
+	    #---------------------------------------------------------------------------
+		if(its==0):
+			event = findrobust_knl(a_queue,x.shape,None,cell_buf,stat_buf,x_buf,
+				y_buf,xt_buf,yt_buf,num_elems)
+			
+		#event.wait()
+		#elap_find = elap_find + 1e-9*(event.profile.end - event.profile.start)
+		#cl.enqueue_read_buffer(a_queue, cell_buf, cell).wait()
+		else:
+			event = findcell_knl(a_queue,x.shape,None,cell_buf,stat_buf,neney_buf,eney_buf,x_buf,
+			y_buf,xt_buf,yt_buf, maxney, num_elems)
+		#event.wait()
+		#elap_set = elap_set + 1e-9*(event.profile.end - event.profile.start)
+		#print("Execution time of findrobust_knl: %g s" % 1e-9*(event.profile.end - event.profile.start))
+		#cl.enqueue_read_buffer(a_queue, cell_buf, cell).wait()
+		#print "cells",cell,f1,f2
+	
+	    #---------------------------------------------------------------------------
+		# update particle state and reset particles on land 
+	    #---------------------------------------------------------------------------
+		event = setstate_knl(a_queue,x.shape,None,cell_buf,cell2_buf,x_buf,x2_buf,
+			y_buf,y2_buf,tini_buf,tlag_buf,stat_buf,mark_buf,mtime)
+		#cl.enqueue_read_buffer(a_queue, tlag_buf, tlag).wait()
+		#print "tlag",cell[200],mark[cell[200]],tlag[200]
+		#event.wait()
+		#elap_set = elap_set + 1e-9*(event.profile.end - event.profile.start)
+	    #---------------------------------------------------------------------------
+		# update forcing
+	    #---------------------------------------------------------------------------
+		event = interp_knl(a_queue,u1.shape,None,u1_buf,v1_buf,u2_buf,v2_buf,uf1_buf,vf1_buf,
+			uf2_buf,vf2_buf,frame_frac,behind)
+		#event.wait()
+		#elap_uf = elap_uf + 1e-9*(event.profile.end - event.profile.start)
+	
+		#cl.enqueue_read_buffer(a_queue, u_buf, u).wait()
+		#cl.enqueue_read_buffer(a_queue, v_buf, v).wait()
+		#print "uval",u
+	
+	    #---------------------------------------------------------------------------
+		# advect with opencl
+	    #---------------------------------------------------------------------------
+		event = advect_knl(a_queue,x.shape,None,cell_buf,stat_buf,nbe_buf,a1u_buf,a2u_buf,xc_buf,yc_buf,x_buf,y_buf,u1_buf,v1_buf,u2_buf,v2_buf,deltat) 
+		#event = revadvect_knl(a_queue,x.shape,None,x_buf,y_buf,u_buf,v_buf)
+		#event.wait()
+		#elap_adv = elap_adv + 1e-9*(event.profile.end - event.profile.start)
+	
+	    #---------------------------------------------------------------------------
+		# dump particle positions to file
+	    #---------------------------------------------------------------------------
+		 
+		if (its+1)%freq == 0:
+		#if (its==nits-1):
+			# transfer data back into host
+			cl.enqueue_read_buffer(a_queue, x_buf, x, is_blocking = False)
+			cl.enqueue_read_buffer(b_queue, y_buf, y, is_blocking = False)
+			cl.enqueue_read_buffer(a_queue, cell_buf, cell, is_blocking = False)
+			cl.enqueue_read_buffer(b_queue, tlag_buf, tlag, is_blocking = False)
+			cl.enqueue_read_buffer(a_queue, tini_buf, tini, is_blocking = False)
+	
+		# write to netcdf file
+			icnt = icnt + 1
+			print "writing iteration: ",icnt
+			t_var[icnt] = mtime_py 
+			x_var[icnt] = x
+			y_var[icnt] = y
+			c_var[icnt] = cell +1 
+			tlag_var[icnt] = tlag
 
     #---------------------------------------------------------------------------
 	# update model time, timer, and report 

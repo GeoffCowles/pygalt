@@ -16,16 +16,16 @@
 ##select_GPU = "Cypress"  # GPU to use
 ##select_PLATFORM = "ATI"
 #
-#deltat_py = 240.  #time step in seconds
-#freq   = 2          # output frequency in time steps
+#deltat_py = 60.  #time step in seconds
+#freq   = 8          # output frequency in time steps
 ##-----------------------------------------------------
 
 
 #-----------------------------------------------------
 # set runtime control vars
 outname = "/Users/cliu/Desktop/output.nc"    # output file
-#gridfile = "./preprocessing/scp4.1_grid.nc"
-gridfile = "./preprocessing/scp4.1_grid_maxney120.nc"
+gridfile = "./preprocessing/scp4.1_grid.nc"
+#gridfile = "./preprocessing/scp4.1_grid_maxney120.nc"
 lagfile = "./preprocessing/example_initfile.nc" 
 #forcefile = "semass_4x11_dply3_C_vertavge_only_3daytest.nc" 
 #forcefile = "semass_4x31_dply3_D_vertavge.nc" 
@@ -40,6 +40,6 @@ select_PLATFORM = "Apple"
 #select_GPU = "Cypress"  # GPU to use
 #select_PLATFORM = "ATI"
 
-deltat_py = 240.  #time step in seconds
-freq   = 500          # output frequency in time steps
+deltat_py = 60.  #time step in seconds
+freq   = 2000          # output frequency in time steps
 #-----------------------------------------------------

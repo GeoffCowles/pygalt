@@ -14,6 +14,7 @@ __kernel void advect( __global int* incell, __global int* stat, __global int* nb
     float pdx,pdy,u,v,up1,up2,vp1,vp2,xoc,yoc, dvdx, dvdy;
     int ns, icell,e1,e2,e3;
     
+    if(stat[i]==0){return;}
     icell = incell[i];
     
 	e1 = nbe[icell*3+0];
@@ -54,8 +55,8 @@ __kernel void advect( __global int* incell, __global int* stat, __global int* nb
 		vp2 = v2[icell] + dvdx*xoc +dvdy*yoc;
 			
         // Calculate Velocity Field for Stage N Using C_RK Coefficients
-        u  = (1.0-c_rk[ns])*up1 + c_rk[ns]*up2*(float)stat[i];
-	    v  = (1.0-c_rk[ns])*vp1 + c_rk[ns]*vp2*(float)stat[i];
+        u  = (1.0-c_rk[ns])*up1 + c_rk[ns]*up2;
+	    v  = (1.0-c_rk[ns])*vp1 + c_rk[ns]*vp2;
 	    chix[ns]  = u;
 	    chiy[ns]  = v;
 	    	    
@@ -68,8 +69,8 @@ __kernel void advect( __global int* incell, __global int* stat, __global int* nb
     for(ns=0; ns<4; ns++)
     {
 //--Update Only Particle Still in Water   
-    	x[i] = x[i] + deltat*chix[ns]*b_rk[ns]*(float)stat[i];
-    	y[i] = y[i] + deltat*chiy[ns]*b_rk[ns]*(float)stat[i];    	
+    	x[i] = x[i] + deltat*chix[ns]*b_rk[ns];
+    	y[i] = y[i] + deltat*chiy[ns]*b_rk[ns];    	
     }
     	
 

@@ -76,13 +76,13 @@ yinit = 500*ones(nlag,1);
 tinit = zeros(nlag,1);
 cinit = zeros(nlag,1);
 
-for i=1:nlag
-    for j=1:nelems
-        if(isintriangle(x(t(j,:)),y(t(j,:)),xinit(i),yinit(i)))
-            cinit(i)=j;
-        end
-    end
-end
+% for i=1:nlag
+%     for j=1:nelems
+%         if(isintriangle(x(t(j,:)),y(t(j,:)),xinit(i),yinit(i)))
+%             cinit(i)=j;
+%         end
+%     end
+% end
 
 
 

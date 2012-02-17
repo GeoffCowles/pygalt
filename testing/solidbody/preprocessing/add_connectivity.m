@@ -19,40 +19,40 @@ hold on;
 maxney = 16;
 eney = zeros(nelems,maxney);
 neney = maxney*ones(nelems,1);
-for i=1:nelems
-    radlist = sqrt( (xc - xc(i)).^2 + (yc - yc(i)).^2 );
-    [~,rad_ind] = sort(radlist,'ascend');
-    eney(i,:) = rad_ind(1:maxney);
-
-    
-end
-
-% eney = zeros(nelems,maxney);
-% neney = zeros(nelems,1);
 % for i=1:nelems
-%   cnt = 1;  
-%   neney(i) = cnt;
-%   eney(i,cnt) = i;
-%   for j=1:3
-%     cell = nbe(i,j);
-%     if(cell > 0);
-%       cnt = cnt + 1;
-%       neney(i) = cnt; 
-%       eney(i,cnt) = cell;
-%     end;
-%   end;
-%   for node = 1:3
-%     i1 = nv(i,node);
-%     for j=1:ntve(i1);
-%       cell = nbve(i1,j);
-%       if(numel(find(eney(i,1:cnt)==cell))==0);
-%   	cnt = cnt + 1;
-%         neney(i) = cnt;
-%         eney(i,cnt) = cell;
-%       end;
-%     end;
-%   end;
-% end;
+%     radlist = sqrt( (xc - xc(i)).^2 + (yc - yc(i)).^2 );
+%     [~,rad_ind] = sort(radlist,'ascend');
+%     eney(i,:) = rad_ind(1:maxney);
+% 
+%     
+% end
+
+eney = zeros(nelems,maxney);
+neney = zeros(nelems,1);
+for i=1:nelems
+  cnt = 1;  
+  neney(i) = cnt;
+  eney(i,cnt) = i;
+  for j=1:3
+    cell = nbe(i,j);
+    if(cell > 0);
+      cnt = cnt + 1;
+      neney(i) = cnt; 
+      eney(i,cnt) = cell;
+    end;
+  end;
+  for node = 1:3
+    i1 = nv(i,node);
+    for j=1:ntve(i1);
+      cell = nbve(i1,j);
+      if(numel(find(eney(i,1:cnt)==cell))==0);
+  	cnt = cnt + 1;
+        neney(i) = cnt;
+        eney(i,cnt) = cell;
+      end;
+    end;
+  end;
+end;
 
 check = 50;
 hold on;
